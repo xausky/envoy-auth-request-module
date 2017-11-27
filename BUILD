@@ -4,22 +4,21 @@ load(
     "@envoy//bazel:envoy_build_system.bzl",
     "envoy_cc_binary",
     "envoy_cc_library",
-    "envoy_cc_test",
 )
 
 envoy_cc_binary(
     name = "envoy",
     repository = "@envoy",
     deps = [
-        ":http_filter_config",
+        ":auth_request_config",
         "@envoy//source/exe:envoy_main_entry_lib",
     ],
 )
 
 envoy_cc_library(
-    name = "http_filter_lib",
-    srcs = ["http_filter.cc"],
-    hdrs = ["http_filter.h"],
+    name = "auth_request_lib",
+    srcs = ["auth_request.cc"],
+    hdrs = ["auth_request.h"],
     repository = "@envoy",
     deps = [
         "@envoy//source/exe:envoy_common_lib",
@@ -27,22 +26,11 @@ envoy_cc_library(
 )
 
 envoy_cc_library(
-    name = "http_filter_config",
-    srcs = ["http_filter_config.cc"],
+    name = "auth_request_config",
+    srcs = ["auth_request_config.cc"],
     repository = "@envoy",
     deps = [
-        ":http_filter_lib",
+        ":auth_request_lib",
         "@envoy//source/exe:envoy_common_lib",
-    ],
-)
-
-envoy_cc_test(
-    name = "http_filter_integration_test",
-    srcs = ["http_filter_integration_test.cc"],
-    data = [":envoy.conf"],
-    repository = "@envoy",
-    deps = [
-        ":http_filter_config",
-        "@envoy//test/integration:http_integration_lib"
     ],
 )

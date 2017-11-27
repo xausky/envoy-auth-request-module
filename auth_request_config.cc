@@ -1,6 +1,6 @@
 #include <string>
 
-#include "http_filter.h"
+#include "auth_request.h"
 
 #include "envoy/registry/registry.h"
 
@@ -17,7 +17,7 @@ public:
           Http::StreamDecoderFilterSharedPtr{new Http::HttpSampleDecoderFilter()});
     };
   }
-  std::string name() override { return "sample"; }
+  std::string name() override { return "auth_request"; }
 };
 
 /**

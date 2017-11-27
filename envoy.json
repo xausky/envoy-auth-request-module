@@ -32,7 +32,7 @@
             "filters": [
               {
                 "type": "decoder",
-                "name": "sample",
+                "name": "auth_request",
                 "config": {}
               },
               {
