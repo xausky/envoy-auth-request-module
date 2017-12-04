@@ -1,46 +1,98 @@
 #include <string>
+#include <thread>
 
 #include "auth_request.h"
 
 #include "server/config/network/http_connection_manager.h"
 
+#include "common/http/async_client_impl.h"
+
 namespace Envoy {
 namespace Http {
 
-HttpSampleDecoderFilter::HttpSampleDecoderFilter() {}
-
-HttpSampleDecoderFilter::~HttpSampleDecoderFilter() {}
-
-void HttpSampleDecoderFilter::onDestroy() {}
-
-const LowerCaseString& HttpSampleDecoderFilter::headerKey() {
-  static LowerCaseString* key = new LowerCaseString("X-Auth-Request");
-  return *key;
+HttpAuthDecoderFilter::HttpAuthDecoderFilter(Envoy::Server::Configuration::FactoryContext& context) {
+  cm_ = &context.clusterManager();
+  data_ = new Buffer::OwnedImpl();
 }
 
-const std::string& HttpSampleDecoderFilter::headerValue() {
-  static std::string* val = new std::string("pass");
-  return *val;
+HttpAuthDecoderFilter::~HttpAuthDecoderFilter() {
+  delete data_;
+  std::list<LowerCaseString*>::iterator key;
+  for (key = temp_keys_.begin(); key != temp_keys_.end(); ++key){
+    delete *key;
+  }
+  std::list<std::string*>::iterator value;
+  for (value = temp_values_.begin(); value != temp_values_.end(); ++value){
+    delete *value;
+  }
 }
 
-FilterHeadersStatus HttpSampleDecoderFilter::decodeHeaders(HeaderMap& headers, bool) {
-  // add a header
-  headers.addReference(headerKey(), headerValue());
-  std::mutex mtx;
-  
-  return FilterHeadersStatus::Continue;
+void HttpAuthDecoderFilter::onDestroy() {}
+
+FilterHeadersStatus HttpAuthDecoderFilter::decodeHeaders(HeaderMap& headers, bool) {
+  headers_ = &headers;
+  AsyncClient& clent = cm_->httpAsyncClientForCluster("auth-upstream");
+  AsyncClient::Stream* stream = clent.start(*this, Optional<std::chrono::milliseconds>(std::chrono::milliseconds(1000)), false);
+  stream->sendHeaders(headers, false);
+  return FilterHeadersStatus::StopIteration;
 }
 
-FilterDataStatus HttpSampleDecoderFilter::decodeData(Buffer::Instance&, bool) {
+FilterDataStatus HttpAuthDecoderFilter::decodeData(Buffer::Instance&, bool) {
   return FilterDataStatus::Continue;
 }
 
-FilterTrailersStatus HttpSampleDecoderFilter::decodeTrailers(HeaderMap&) {
+FilterTrailersStatus HttpAuthDecoderFilter::decodeTrailers(HeaderMap&) {
   return FilterTrailersStatus::Continue;
 }
 
-void HttpSampleDecoderFilter::setDecoderFilterCallbacks(StreamDecoderFilterCallbacks& callbacks) {
+void HttpAuthDecoderFilter::setDecoderFilterCallbacks(StreamDecoderFilterCallbacks& callbacks) {
   decoder_callbacks_ = &callbacks;
+}
+
+void HttpAuthDecoderFilter::onHeaders(Http::HeaderMapPtr&& headers, bool){
+  auth_status_ = Utility::getResponseStatus(*headers);
+  ENVOY_LOG_MISC(info, "status: {}", auth_status_);
+}
+
+
+
+void HttpAuthDecoderFilter::onData(Buffer::Instance& data, bool end_stream){
+  ENVOY_LOG_MISC(info, "onData: {}", data.length());
+  data_->add(data);
+  if(!end_stream){
+    return;
+  }
+  if(auth_status_ / 100 == 2){
+    std::string body;
+    uint64_t num_slices = data_->getRawSlices(nullptr, 0);
+    Buffer::RawSlice slices[num_slices];
+    data_->getRawSlices(slices, num_slices);
+    for (Buffer::RawSlice& slice : slices) {
+      body.append(static_cast<const char*>(slice.mem_), slice.len_);
+    }
+    try {
+      Json::ObjectSharedPtr json_body = Json::Factory::loadFromString(body);
+      json_body->iterate(
+        [=](const std::string& key, const Json::Object& value){
+          LowerCaseString *keyString = new LowerCaseString(key);
+          std::string *valueString = new std::string(value.asString());
+          headers_->addReference(*keyString, *valueString);
+          temp_keys_.push_back(keyString);
+          temp_values_.push_back(valueString);
+          return true;
+        }
+      );
+    } catch (const Json::Exception& jsonEx) {
+      ENVOY_LOG_MISC(info, "json exception: {}", body);
+    }
+    decoder_callbacks_->continueDecoding();
+  }else{
+    decoder_callbacks_->resetStream();
+  }
+}
+void HttpAuthDecoderFilter::onTrailers(Http::HeaderMapPtr&&){
+}
+void HttpAuthDecoderFilter::onReset(){
 }
 
 } // Http

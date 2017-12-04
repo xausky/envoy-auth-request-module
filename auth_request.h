@@ -1,16 +1,17 @@
 #pragma once
 
 #include <string>
+#include <condition_variable>
 
 #include "server/config/network/http_connection_manager.h"
 
 namespace Envoy {
 namespace Http {
 
-class HttpSampleDecoderFilter : public StreamDecoderFilter {
+class HttpAuthDecoderFilter : public StreamDecoderFilter, public AsyncClient::StreamCallbacks {
 public:
-  HttpSampleDecoderFilter();
-  ~HttpSampleDecoderFilter();
+  HttpAuthDecoderFilter(Envoy::Server::Configuration::FactoryContext& context);
+  ~HttpAuthDecoderFilter();
 
   // Http::StreamFilterBase
   void onDestroy() override;
@@ -21,11 +22,20 @@ public:
   FilterTrailersStatus decodeTrailers(HeaderMap&) override;
   void setDecoderFilterCallbacks(StreamDecoderFilterCallbacks& callbacks) override;
 
+  // Http::AsyncClient::StreamCallbacks
+  void onHeaders(Http::HeaderMapPtr&& headers, bool end_stream) override;
+  void onData(Buffer::Instance& data, bool end_stream) override;
+  void onTrailers(Http::HeaderMapPtr&& trailers) override;
+  void onReset() override;
+
 private:
   StreamDecoderFilterCallbacks* decoder_callbacks_;
-
-  const LowerCaseString& headerKey();
-  const std::string& headerValue();
+  Upstream::ClusterManager* cm_;
+  HeaderMap* headers_;
+  Buffer::Instance* data_;
+  std::list<LowerCaseString*> temp_keys_;
+  std::list<std::string*> temp_values_;
+  uint64_t auth_status_ = 0;
 };
 
 } // Http

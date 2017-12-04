@@ -8,13 +8,13 @@ namespace Envoy {
 namespace Server {
 namespace Configuration {
 
-class HttpSampleDecoderFilterConfig : public NamedHttpFilterConfigFactory {
+class HttpAuthDecoderFilterConfig : public NamedHttpFilterConfigFactory {
 public:
   HttpFilterFactoryCb createFilterFactory(const Json::Object&, const std::string&,
-                                          FactoryContext&) override {
-    return [](Http::FilterChainFactoryCallbacks& callbacks) -> void {
+                                          FactoryContext& context) override {
+    return [&context](Http::FilterChainFactoryCallbacks& callbacks) -> void {
       callbacks.addStreamDecoderFilter(
-          Http::StreamDecoderFilterSharedPtr{new Http::HttpSampleDecoderFilter()});
+          Http::StreamDecoderFilterSharedPtr{new Http::HttpAuthDecoderFilter(context)});
     };
   }
   std::string name() override { return "auth_request"; }
@@ -23,8 +23,7 @@ public:
 /**
  * Static registration for this sample filter. @see RegisterFactory.
  */
-static Registry::RegisterFactory<HttpSampleDecoderFilterConfig, NamedHttpFilterConfigFactory>
-    register_;
+static Registry::RegisterFactory<HttpAuthDecoderFilterConfig, NamedHttpFilterConfigFactory> register_;
 
 } // Configuration
 } // Server

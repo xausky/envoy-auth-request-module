@@ -18,7 +18,7 @@
                   "routes": [
                     {
                       "prefix": "/",
-                      "cluster": "service1"
+                      "cluster": "service"
                     }
                   ]
                 }
@@ -53,13 +53,24 @@
   "cluster_manager": {
     "clusters": [
       {
-        "name": "service1",
+        "name": "service",
         "connect_timeout_ms": 5000,
         "type": "static",
         "lb_type": "round_robin",
         "hosts": [
           {
             "url": "tcp://127.0.0.1:8000"
+          }
+        ]
+      },
+      {
+        "name": "auth-upstream",
+        "connect_timeout_ms": 5000,
+        "type": "static",
+        "lb_type": "round_robin",
+        "hosts": [
+          {
+            "url": "tcp://127.0.0.1:9000"
           }
         ]
       }
