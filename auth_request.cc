@@ -10,9 +10,10 @@
 namespace Envoy {
 namespace Http {
 
-HttpAuthDecoderFilter::HttpAuthDecoderFilter(Envoy::Server::Configuration::FactoryContext& context) {
+HttpAuthDecoderFilter::HttpAuthDecoderFilter(Envoy::Server::Configuration::FactoryContext& context,std::string& upstream) {
   cm_ = &context.clusterManager();
   data_ = new Buffer::OwnedImpl();
+  upstream_name_ = &upstream;
 }
 
 HttpAuthDecoderFilter::~HttpAuthDecoderFilter() {
@@ -31,7 +32,7 @@ void HttpAuthDecoderFilter::onDestroy() {}
 
 FilterHeadersStatus HttpAuthDecoderFilter::decodeHeaders(HeaderMap& headers, bool) {
   headers_ = &headers;
-  AsyncClient& clent = cm_->httpAsyncClientForCluster("auth-upstream");
+  AsyncClient& clent = cm_->httpAsyncClientForCluster(*upstream_name_);
   AsyncClient::Stream* stream = clent.start(*this, Optional<std::chrono::milliseconds>(std::chrono::milliseconds(1000)), false);
   stream->sendHeaders(headers, false);
   return FilterHeadersStatus::StopIteration;
@@ -51,13 +52,11 @@ void HttpAuthDecoderFilter::setDecoderFilterCallbacks(StreamDecoderFilterCallbac
 
 void HttpAuthDecoderFilter::onHeaders(Http::HeaderMapPtr&& headers, bool){
   auth_status_ = Utility::getResponseStatus(*headers);
-  ENVOY_LOG_MISC(info, "status: {}", auth_status_);
 }
 
 
 
 void HttpAuthDecoderFilter::onData(Buffer::Instance& data, bool end_stream){
-  ENVOY_LOG_MISC(info, "onData: {}", data.length());
   data_->add(data);
   if(!end_stream){
     return;

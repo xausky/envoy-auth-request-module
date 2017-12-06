@@ -18,7 +18,8 @@
                   "routes": [
                     {
                       "prefix": "/",
-                      "cluster": "service"
+                      "cluster": "service",
+                      "use_websocket": true
                     }
                   ]
                 }
@@ -33,7 +34,9 @@
               {
                 "type": "decoder",
                 "name": "auth_request",
-                "config": {}
+                "config": {
+                  "upstream": "auth-upstream"
+                }
               },
               {
                 "type": "decoder",
@@ -59,7 +62,7 @@
         "lb_type": "round_robin",
         "hosts": [
           {
-            "url": "tcp://127.0.0.1:8000"
+            "url": "tcp://127.0.0.1:8765"
           }
         ]
       },

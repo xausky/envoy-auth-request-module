@@ -10,7 +10,7 @@ namespace Http {
 
 class HttpAuthDecoderFilter : public StreamDecoderFilter, public AsyncClient::StreamCallbacks {
 public:
-  HttpAuthDecoderFilter(Envoy::Server::Configuration::FactoryContext& context);
+  HttpAuthDecoderFilter(Envoy::Server::Configuration::FactoryContext& context, std::string& upstream);
   ~HttpAuthDecoderFilter();
 
   // Http::StreamFilterBase
@@ -33,6 +33,7 @@ private:
   Upstream::ClusterManager* cm_;
   HeaderMap* headers_;
   Buffer::Instance* data_;
+  const std::string* upstream_name_;
   std::list<LowerCaseString*> temp_keys_;
   std::list<std::string*> temp_values_;
   uint64_t auth_status_ = 0;
