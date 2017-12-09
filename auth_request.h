@@ -32,8 +32,9 @@ private:
   StreamDecoderFilterCallbacks* decoder_callbacks_;
   Upstream::ClusterManager* cm_;
   HeaderMap* headers_;
+  HeaderMapPtr* response_headers_;
   Buffer::Instance* data_;
-  const std::string* upstream_name_;
+  std::string* upstream_name_;
   std::list<LowerCaseString*> temp_keys_;
   std::list<std::string*> temp_values_;
   uint64_t auth_status_ = 0;

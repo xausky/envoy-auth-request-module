@@ -18,8 +18,7 @@
                   "routes": [
                     {
                       "prefix": "/",
-                      "cluster": "service",
-                      "use_websocket": true
+                      "cluster": "service"
                     }
                   ]
                 }
@@ -62,7 +61,7 @@
         "lb_type": "round_robin",
         "hosts": [
           {
-            "url": "tcp://127.0.0.1:8765"
+            "url": "tcp://127.0.0.1:8000"
           }
         ]
       },

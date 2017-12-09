@@ -26,6 +26,7 @@ HttpAuthDecoderFilter::~HttpAuthDecoderFilter() {
   for (value = temp_values_.begin(); value != temp_values_.end(); ++value){
     delete *value;
   }
+  delete response_headers_;
 }
 
 void HttpAuthDecoderFilter::onDestroy() {}
@@ -52,9 +53,8 @@ void HttpAuthDecoderFilter::setDecoderFilterCallbacks(StreamDecoderFilterCallbac
 
 void HttpAuthDecoderFilter::onHeaders(Http::HeaderMapPtr&& headers, bool){
   auth_status_ = Utility::getResponseStatus(*headers);
+  response_headers_ = new HeaderMapPtr(new HeaderMapImpl(*headers));
 }
-
-
 
 void HttpAuthDecoderFilter::onData(Buffer::Instance& data, bool end_stream){
   data_->add(data);
@@ -86,7 +86,8 @@ void HttpAuthDecoderFilter::onData(Buffer::Instance& data, bool end_stream){
     }
     decoder_callbacks_->continueDecoding();
   }else{
-    decoder_callbacks_->resetStream();
+    decoder_callbacks_->encodeHeaders(std::move(*response_headers_),false);
+    decoder_callbacks_->encodeData(*data_, true);
   }
 }
 void HttpAuthDecoderFilter::onTrailers(Http::HeaderMapPtr&&){

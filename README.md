@@ -1,36 +1,39 @@
-# Envoy filter example
+# Envoy Auth Request Module
 
-This project demonstrates the linking of additional filters with the Envoy binary.
-A new filter `echo2` is introduced, identical modulo renaming to the existing
-[`echo`](https://github.com/envoyproxy/envoy/blob/master/source/common/filter/echo.h)
-filter. Integration tests demonstrating the filter's end-to-end behavior are
-also provided.
+本项目实现了类似nginx的ngx_auth_request_module在envoy上。实现HTTP代理前的子请求验证和附加头信息。
 
-For an example of additional HTTP filters, see [here](http-filter-example).
+> 由于envoy对websocket的支持问题，目前本模块不支持websocket。
 
-## Building
+## 编译
 
-To build the Envoy static binary:
+使用下面命令编译静态可执行文件，输出在：bazel-bin/envoy
 
 1. `git submodule update --init`
-2. `bazel build //:envoy`
+2. `bazel build envoy`
 
-## Testing
+## 配置
 
-To run the `echo2` integration test:
+* 项目内`envoy.json`为参考配置文件。
+* 其使用`localhost:8000`模拟上流服务器，`localhost:9000`模拟授权服务器，监听`localhost:8080`端口。
+* 其示例服务器实现在toos目录下。
 
-`bazel test //:echo2_integration_test`
+本模块配置如下
 
-To run the regular Envoy tests from this project:
+```
+              {
+                "type": "decoder",
+                "name": "auth_request",
+                "config": {
+                  "upstream": "auth-upstream"
+                }
+              }
+```
 
-`bazel test @envoy//test/...`
+1. `type`，`name`为固定值，表示使用本模块。
+2. `upstream`值为授权服务的clusters名称。
 
-## How it works
+## Docker镜像
 
-The [Envoy repository](https://github.com/envoyproxy/envoy/) is provided as a submodule.
-The [`WORKSPACE`](WORKSPACE) file maps the `@envoy` repository to this local path.
-
-The [`BUILD`](BUILD) file introduces a new Envoy static binary target, `envoy`,
-that links together the new filter and `@envoy//source/exe:envoy_main_lib`. The
-`echo2` filter registers itself during the static initialization phase of the
-Envoy binary as a new filter.
+* 目前需要手动编译docker镜像并使用docker目录下Dockerfile打包。
+* 有打包好的镜像在[https://hub.docker.com/r/xausky/envoy-auth-request/](https://hub.docker.com/r/xausky/envoy-auth-request/)。
+* docker镜像使用需要先添加或者挂载配置文件进去，然后使用`envoy -c <配置文件>`来运行。
